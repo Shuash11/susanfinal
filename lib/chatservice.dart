@@ -3,6 +3,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'config/api_config.dart';
+import 'config/backend_config.dart';
 import 'message_model.dart';
 
 enum ChatProvider { studyBuddyThinker, studyBuddyFast, studyBuddyJuniorCoder, studyBuddyGeneralTask }
@@ -88,16 +89,8 @@ class ChatService {
 
     history.add({'role': 'user', 'parts': [{'text': userMessage}]});
 
-    final apiKey = ApiConfig.geminiApiKey;
-    final baseUrl = ApiConfig.geminiBaseUrl;
-
-    if (apiKey.isEmpty) {
-      throw Exception('Gemini API key is empty. Check .env or build config.');
-    }
-
-    final url = Uri.parse(
-      '${baseUrl.replaceAll('generateContent', 'streamGenerateContent')}?key=$apiKey',
-    );
+    // Use backend instead of direct API call
+    final url = Uri.parse(BackendConfig.geminiEndpoint);
 
     final client = http.Client();
     final StringBuffer fullReply = StringBuffer();
@@ -191,14 +184,14 @@ class ChatService {
 
     history.add({'role': 'user', 'content': userMessage});
 
-    final url = Uri.parse('${ApiConfig.groqBaseUrl}/chat/completions');
+    // Use backend instead of direct API call
+    final url = Uri.parse(BackendConfig.groqEndpoint);
     final client = http.Client();
     final StringBuffer fullReply = StringBuffer();
 
     try {
       final headers = {
         'Content-Type': 'application/json',
-        'Authorization': 'Bearer ${ApiConfig.groqApiKey}',
       };
 
       final body = jsonEncode({
@@ -278,26 +271,12 @@ class ChatService {
   }
 
   Future<bool> isOllamaRunning() async {
-    if (ApiConfig.hasGeminiKey) {
-      try {
-        final baseUrl = ApiConfig.geminiBaseUrl.split(':generateContent').first;
-        final url = Uri.parse('$baseUrl?key=${ApiConfig.geminiApiKey}');
-        final response = await http.get(url).timeout(const Duration(seconds: 5));
-        if (response.statusCode == 200) return true;
-      } catch (_) {}
-    }
-
-    if (ApiConfig.hasGroqKey) {
-      try {
-        final url = Uri.parse('${ApiConfig.groqBaseUrl}/models');
-        final response = await http.get(
-          url,
-          headers: {'Authorization': 'Bearer ${ApiConfig.groqApiKey}'},
-        ).timeout(const Duration(seconds: 5));
-        if (response.statusCode == 200) return true;
-      } catch (_) {}
-    }
-
+    // Check backend health instead of direct API
+    try {
+      final url = Uri.parse(BackendConfig.healthEndpoint);
+      final response = await http.get(url).timeout(const Duration(seconds: 5));
+      if (response.statusCode == 200) return true;
+    } catch (_) {}
     return false;
   }
 }
