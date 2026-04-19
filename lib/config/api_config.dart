@@ -2,33 +2,22 @@
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 
 class ApiConfig {
-  static String get geminiApiKey {
+  static String _getKey(String key) {
     try {
-      final key = dotenv.env['GEMINI_API_KEY'];
-      if (key == null || key.isEmpty) {
-        return '';
-      }
-      return key;
+      final k = dotenv.env[key];
+      return k ?? '';
     } catch (e) {
       return '';
     }
   }
+
+  static String get geminiApiKey => _getKey('GEMINI_API_KEY');
 
   static String get geminiBaseUrl {
     return 'https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent';
   }
 
-  static String get groqApiKey {
-    try {
-      final key = dotenv.env['GROQ_API_KEY'];
-      if (key == null || key.isEmpty) {
-        return '';
-      }
-      return key;
-    } catch (e) {
-      return '';
-    }
-  }
+  static String get groqApiKey => _getKey('GROQ_API_KEY');
 
   static const String groqBaseUrl = 'https://api.groq.com/openai/v1';
 
