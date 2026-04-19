@@ -12,6 +12,13 @@
 .swiftpm/
 migrate_working_dir/
 
+# Environment files
+.env
+
+# Android signing
+android/key.properties
+android/app/studybuddy.jks
+
 # IntelliJ related
 *.iml
 *.ipr

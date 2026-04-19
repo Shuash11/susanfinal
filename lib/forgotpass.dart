@@ -87,15 +87,22 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
     setState(() => _isLoading = true);
 
-    final result = await _repository.verifyUsername(_usernameController.text);
+    try {
+      final result = await _repository.verifyUsername(_usernameController.text)
+          .timeout(const Duration(seconds: 10));
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (result.success) {
-      _goToStep(_Step.newPassword);
-    } else {
-      _showError(result.errorMessage!);
+      if (result.success) {
+        _goToStep(_Step.newPassword);
+      } else {
+        _showError(result.errorMessage ?? 'Verification failed. Please try again.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showError('Connection failed: ${e.toString()}');
     }
   }
 
@@ -104,19 +111,52 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
 
     setState(() => _isLoading = true);
 
-    final result = await _repository.resetPassword(
-      _usernameController.text,
-      _newPasswordController.text,
-    );
+    try {
+      final result = await _repository.resetPassword(
+        _usernameController.text,
+        _newPasswordController.text,
+      ).timeout(const Duration(seconds: 10));
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (result.success) {
-      _goToStep(_Step.success);
-    } else {
-      _showError(result.errorMessage!);
+      if (result.success) {
+        _showSuccessAndGoHome();
+      } else {
+        _showError(result.errorMessage ?? 'Reset failed. Please try again.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showError('Connection failed: ${e.toString()}');
     }
+  }
+
+  void _showSuccessAndGoHome() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: AppColors.success, size: 28),
+            SizedBox(width: 10),
+            Text('Password Reset!', style: TextStyle(color: AppColors.textPrimary)),
+          ],
+        ),
+        content: Text(
+          'Password updated successfully!',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      ),
+    );
+    Future.delayed(Duration(milliseconds: 800), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+        Navigator.pop(context);
+      }
+    });
   }
 
   void _goToStep(_Step step) {
