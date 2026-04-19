@@ -1,5 +1,4 @@
 
-
 import 'package:flutter/material.dart';
 import 'app_colors.dart';
 import 'shared_widgets.dart';
@@ -71,19 +70,52 @@ class _SignupScreenState extends State<SignupScreen>
 
     setState(() => _isLoading = true);
 
-    final result = await _repository.signUp(
-      _nameController.text,
-      _passwordController.text,
-    );
+    try {
+      final result = await _repository.signUp(
+        _nameController.text,
+        _passwordController.text,
+      ).timeout(const Duration(seconds: 15));
 
-    if (!mounted) return;
-    setState(() => _isLoading = false);
+      if (!mounted) return;
+      setState(() => _isLoading = false);
 
-    if (result.success) {
-      _goToHome();
-    } else {
-      _showError(result.errorMessage!);
+      if (result.success) {
+        _showSuccessDialog();
+      } else {
+        _showError(result.errorMessage ?? 'Sign up failed. Please try again.');
+      }
+    } catch (e) {
+      if (!mounted) return;
+      setState(() => _isLoading = false);
+      _showError('Connection failed: ${e.toString()}');
     }
+  }
+
+  void _showSuccessDialog() {
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => AlertDialog(
+        backgroundColor: AppColors.surface,
+        title: Row(
+          children: [
+            Icon(Icons.check_circle, color: AppColors.success, size: 28),
+            SizedBox(width: 10),
+            Text('Account Created!', style: TextStyle(color: AppColors.textPrimary)),
+          ],
+        ),
+        content: Text(
+          'Welcome to StudyBuddy! Taking you to home...',
+          style: TextStyle(color: AppColors.textSecondary),
+        ),
+      ),
+    );
+    Future.delayed(Duration(milliseconds: 800), () {
+      if (mounted) {
+        Navigator.of(context).pop();
+        _goToHome();
+      }
+    });
   }
 
   void _goToHome() {
