@@ -36,15 +36,15 @@ dependencies:
   cupertino_icons: ^1.0.8
 
   # Firebase
-  firebase_core: ^3.0.0
-  firebase_auth: ^5.0.0
-  cloud_firestore: ^5.0.0
+  firebase_core: ^3.10.0
+  firebase_auth: ^5.5.0
+  cloud_firestore: ^5.5.0
 
-  # HTTP for Gemini API calls
+  # HTTP for backend API calls
   http: ^1.2.0
 
-  # Environment variables (to hide API key)
-  flutter_dotenv: ^5.1.0
+  # Connectivity
+  connectivity_plus: ^6.0.0
 
 dev_dependencies:
   flutter_test:
@@ -75,13 +75,12 @@ flutter_launcher_icons:
 # The following section is specific to Flutter packages.
 flutter:
 
-  # The following line ensures that the Material Icons font is
-  # included with your application, so that you can use the icons in
-  # the material Icons class.
+  # The following line ensures that the Material Icons font to your
+  # application is included, that you may use the icons in the material
+  # Icons class.
   uses-material-design: true
 
   assets:
-    - .env
     - assets/icon/
 
   # To add assets to your application, add an assets section, like this:

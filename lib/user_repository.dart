@@ -11,38 +11,53 @@ class AuthResult {
 }
 
 class UserRepository {
-  static final UserRepository _instance = UserRepository._internal();
-  factory UserRepository() => _instance;
+  static UserRepository? _instance;
+  static FirebaseAuth? _authInstance;
+  static FirebaseFirestore? _dbInstance;
+
+  factory UserRepository() {
+    _instance ??= UserRepository._internal();
+    return _instance!;
+  }
   UserRepository._internal();
 
-  final FirebaseAuth _auth = FirebaseAuth.instance;
-  final FirebaseFirestore _db = FirebaseFirestore.instance;
+  static Future<void> initializeFirebase() async {
+    _authInstance = FirebaseAuth.instance;
+    _dbInstance = FirebaseFirestore.instance;
+  }
+
+  FirebaseAuth get _auth {
+    return _authInstance ?? FirebaseAuth.instance;
+  }
+
+  FirebaseFirestore get _db {
+    return _dbInstance ?? FirebaseFirestore.instance;
+  }
 
   String? _currentUsername;
   String? get currentUsername => _currentUsername;
 
-  Future<AuthResult> login(String username, String password) async {
+Future<AuthResult> login(String username, String password) async {
+    final trimmed = username.trim().toLowerCase();
+    
     try {
+      // Query Firestore for user
       final query = await _db
           .collection('users')
-          .where('username', isEqualTo: username.trim().toLowerCase())
+          .where('username', isEqualTo: trimmed)
           .limit(1)
           .get();
 
       if (query.docs.isEmpty) {
-        return const AuthResult.fail(
-            'Invalid username or password. Please try again.');
+        return const AuthResult.fail('Username not found.');
       }
 
       final email = query.docs.first['email'] as String;
-
       await _auth.signInWithEmailAndPassword(email: email, password: password);
       _currentUsername = username.trim();
       return const AuthResult.ok();
-    } on FirebaseAuthException catch (e) {
-      return AuthResult.fail(_mapFirebaseError(e.code));
     } catch (e) {
-      return AuthResult.fail('Login failed: ${e.toString()}');
+      return AuthResult.fail('Login failed. Check your credentials.');
     }
   }
 
@@ -78,10 +93,8 @@ class UserRepository {
 
       _currentUsername = username.trim();
       return const AuthResult.ok();
-    } on FirebaseAuthException catch (e) {
-      return AuthResult.fail(_mapFirebaseError(e.code));
     } catch (e) {
-      return AuthResult.fail('Sign up failed: ${e.toString()}');
+      return AuthResult.fail('Sign up failed. Try a different username.');
     }
   }
 

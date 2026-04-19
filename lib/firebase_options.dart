@@ -18,28 +18,35 @@ class DefaultFirebaseOptions {
     );
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyANAs-c8RfjiKIu95KbMX_UUzjYu08lxsM',
-    appId: '1:551103993995:android:115d3b584c5a1a31c31c8e',
-    messagingSenderId: '551103993995',
-    projectId: 'studybuddy-59119',
-    authDomain: 'studybuddy-59119.firebaseapp.com',
-    storageBucket: 'studybuddy-59119.firebasestorage.app',
+  static const String _apiKey = 'AIzaSyANAs-c8RfjiKIu95KbMX_UUzjYu08lxsM';
+  static const String _appId = '1:551103993995:android:115d3b584c5a1a31c31c8e';
+  static const String _messagingSenderId = '551103993995';
+  static const String _projectId = 'studybuddy-59119';
+  static const String _authDomain = 'studybuddy-59119.firebaseapp.com';
+  static const String _storageBucket = 'studybuddy-59119.firebasestorage.app';
+
+  static final FirebaseOptions web = FirebaseOptions(
+    apiKey: _apiKey,
+    appId: _appId,
+    messagingSenderId: _messagingSenderId,
+    projectId: _projectId,
+    authDomain: _authDomain,
+    storageBucket: _storageBucket,
   );
 
-  static const FirebaseOptions android = FirebaseOptions(
-    apiKey: 'AIzaSyANAs-c8RfjiKIu95KbMX_UUzjYu08lxsM',
-    appId: '1:551103993995:android:115d3b584c5a1a31c31c8e',
-    messagingSenderId: '551103993995',
-    projectId: 'studybuddy-59119',
-    storageBucket: 'studybuddy-59119.firebasestorage.app',
+  static final FirebaseOptions android = FirebaseOptions(
+    apiKey: _apiKey,
+    appId: _appId,
+    messagingSenderId: _messagingSenderId,
+    projectId: _projectId,
+    storageBucket: _storageBucket,
   );
 
-  static const FirebaseOptions ios = FirebaseOptions(
-    apiKey: 'AIzaSyANAs-c8RfjiKIu95KbMX_UUzjYu08lxsM',
-    appId: '1:551103993995:android:115d3b584c5a1a31c31c8e',
-    messagingSenderId: '551103993995',
-    projectId: 'studybuddy-59119',
-    storageBucket: 'studybuddy-59119.firebasestorage.app',
+  static final FirebaseOptions ios = FirebaseOptions(
+    apiKey: _apiKey,
+    appId: _appId,
+    messagingSenderId: _messagingSenderId,
+    projectId: _projectId,
+    storageBucket: _storageBucket,
   );
 }
