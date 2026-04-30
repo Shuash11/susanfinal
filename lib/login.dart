@@ -61,6 +61,10 @@ class _LoginScreenState extends State<LoginScreen>
     super.dispose();
   }
 
+  void _togglePassword() {
+    setState(() => _obscurePassword = !_obscurePassword);
+  }
+
   Future<void> _handleLogin() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -180,8 +184,7 @@ class _LoginScreenState extends State<LoginScreen>
                       obscureText: _obscurePassword,
                       suffixIcon: _PasswordToggle(
                         isObscured: _obscurePassword,
-                        onToggle: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                        onToggle: _togglePassword,
                       ),
                       validator: UserRepository.validatePassword,
                     ),

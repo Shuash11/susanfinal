@@ -22,7 +22,17 @@ class _SplashScreenState extends State<SplashScreen>
     super.initState();
     _initAnimations();
 
-    Future.delayed(const Duration(milliseconds: 2800), _navigateToHome);
+    _controller.addStatusListener((status) {
+      if (status == AnimationStatus.completed) {
+        Future.delayed(const Duration(milliseconds: 800), _navigateToHome);
+      }
+    });
+
+    Future.delayed(const Duration(milliseconds: 4000), () {
+      if (mounted && _controller.status != AnimationStatus.completed) {
+        _controller.forward();
+      }
+    });
   }
 
   void _initAnimations() {

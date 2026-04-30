@@ -12,18 +12,13 @@ class ChatRepository {
   final FirebaseFirestore _db = FirebaseFirestore.instance;
   final FirebaseAuth _auth = FirebaseAuth.instance;
 
-  // Returns the current user's UID or null if not logged in
   String? get _uid => _auth.currentUser?.uid;
-
-  // ── Collection paths ───────────────────────────────────────
 
   CollectionReference get _sessionsCol =>
       _db.collection('users').doc(_uid).collection('sessions');
 
   CollectionReference _messagesCol(String sessionId) =>
       _sessionsCol.doc(sessionId).collection('messages');
-
-  // ── Save a full session (upsert) ───────────────────────────
 
   Future<void> saveSession(ChatSession session) async {
     if (_uid == null) return;
@@ -45,6 +40,7 @@ class ChatRepository {
           'content': msg.content,
           'role': msg.isUser ? 'user' : 'bot',
           'timestamp': msg.timestamp.toIso8601String(),
+          'sessionId': session.id,
         }, SetOptions(merge: true));
       }
       await batch.commit();
@@ -53,46 +49,76 @@ class ChatRepository {
     }
   }
 
-  // ── Load all sessions for current user ─────────────────────
+  Future<List<ChatSession>> loadSessions({int limit = 10, int offset = 0}) async {
+    if (_uid == null) return [];
 
-  Future<List<ChatSession>> loadSessions() async {
-    if (_uid == null) {
-      return [];
-    }
     try {
-      final snap = await _sessionsCol.get();
+      final allSnap = await _sessionsCol
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      if (allSnap.docs.isEmpty) return [];
+
+      final allDocs = allSnap.docs;
+      if (offset >= allDocs.length) return [];
+
+      final endIndex = (offset + limit) > allDocs.length 
+          ? allDocs.length 
+          : offset + limit;
+      final snapDocs = allDocs.sublist(offset, endIndex);
 
       final sessions = <ChatSession>[];
-      for (final doc in snap.docs) {
-        final data = doc.data() as Map<String, dynamic>;
+      final sessionIds = <String>[];
+
+      for (final doc in snapDocs) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) continue;
         
         final session = ChatSession(
           id: data['id'] as String,
           name: data['name'] as String,
           createdAt: DateTime.parse(data['createdAt'] as String),
         );
+        sessions.add(session);
+        sessionIds.add(session.id);
+      }
 
-        final msgSnap = await _messagesCol(session.id).get();
-
+      final messagesBySession = <String, List<MessageModel>>{};
+      for (final sessionId in sessionIds) {
+        final msgSnap = await _messagesCol(sessionId).get();
+        final messages = <MessageModel>[];
         for (final msgDoc in msgSnap.docs) {
-          final m = msgDoc.data() as Map<String, dynamic>;
-          session.messages.add(MessageModel(
+          final m = msgDoc.data() as Map<String, dynamic>?;
+          if (m == null) continue;
+          messages.add(MessageModel(
             id: m['id'] as String,
             content: m['content'] as String,
             role: m['role'] == 'user' ? MessageRole.user : MessageRole.bot,
             timestamp: DateTime.parse(m['timestamp'] as String),
           ));
         }
-
-        sessions.add(session);
+        messagesBySession[sessionId] = messages;
       }
+
+      for (final session in sessions) {
+        session.messages.addAll(messagesBySession[session.id] ?? []);
+      }
+
       return sessions;
     } catch (e) {
       return [];
     }
   }
 
-  // ── Delete a session and all its messages ──────────────────
+  Future<int> getSessionCount() async {
+    if (_uid == null) return 0;
+    try {
+      final snap = await _sessionsCol.get();
+      return snap.docs.length;
+    } catch (e) {
+      return 0;
+    }
+  }
 
   Future<void> deleteSession(String sessionId) async {
     if (_uid == null) return;
@@ -108,8 +134,6 @@ class ChatRepository {
       // Silent fail
     }
   }
-
-  // ── Delete one message ────────────────────────────────────
 
   Future<void> deleteMessage(String sessionId, String messageId) async {
     if (_uid == null) return;

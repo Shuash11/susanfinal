@@ -116,7 +116,7 @@ class _HomeScreenState extends State<HomeScreen> {
               controller: nameCtrl,
               autofocus: true,
               style: const TextStyle(color: kTextPri, fontSize: 14.5),
-              onSubmitted: (_) => _createChat(ctx, vm, nameCtrl),
+              onSubmitted: (_) => _handleNewChatSubmit(ctx, vm, nameCtrl),
               decoration: InputDecoration(
                 hintText: 'e.g. Algebra homework',
                 hintStyle: const TextStyle(color: kTextSec, fontSize: 14),
@@ -159,6 +159,11 @@ class _HomeScreenState extends State<HomeScreen> {
         ],
       ),
     );
+  }
+
+  void _handleNewChatSubmit(BuildContext ctx, ChatViewModel vm,
+      TextEditingController ctrl) {
+    _createChat(ctx, vm, ctrl);
   }
 
   void _createChat(BuildContext ctx, ChatViewModel vm,

@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'firebase_options.dart';
@@ -10,12 +11,12 @@ import 'user_repository.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   try {
+    await dotenv.load(fileName: ".env");
     await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform);
     await UserRepository.initializeFirebase();
   } catch (e) {
     // Firebase init error
-    print('Init error: $e');
   }
 
   SystemChrome.setPreferredOrientations([

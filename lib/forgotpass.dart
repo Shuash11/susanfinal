@@ -64,6 +64,14 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
     super.dispose();
   }
 
+  void _toggleNewPassword() {
+    setState(() => _obscureNew = !_obscureNew);
+  }
+
+  void _toggleConfirmPassword() {
+    setState(() => _obscureConfirm = !_obscureConfirm);
+  }
+
   IconData get _headerIcon => switch (_currentStep) {
         _Step.username => Icons.lock_reset_rounded,
         _Step.newPassword => Icons.vpn_key_outlined,
@@ -235,9 +243,8 @@ class _ForgotPasswordScreenState extends State<ForgotPasswordScreen>
           obscureNew: _obscureNew,
           obscureConfirm: _obscureConfirm,
           isLoading: _isLoading,
-          onToggleNew: () => setState(() => _obscureNew = !_obscureNew),
-          onToggleConfirm: () =>
-              setState(() => _obscureConfirm = !_obscureConfirm),
+          onToggleNew: _toggleNewPassword,
+          onToggleConfirm: _toggleConfirmPassword,
           onSubmit: _handleResetPassword,
         ),
       _Step.success => _SuccessStep(

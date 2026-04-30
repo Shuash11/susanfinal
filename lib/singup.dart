@@ -59,6 +59,14 @@ class _SignupScreenState extends State<SignupScreen>
     super.dispose();
   }
 
+  void _togglePasswordVisibility() {
+    setState(() => _obscurePassword = !_obscurePassword);
+  }
+
+  void _toggleConfirmVisibility() {
+    setState(() => _obscureConfirm = !_obscureConfirm);
+  }
+
   Future<void> _handleSignUp() async {
     if (!_formKey.currentState!.validate()) return;
 
@@ -189,8 +197,7 @@ class _SignupScreenState extends State<SignupScreen>
                       obscureText: _obscurePassword,
                       suffixIcon: _PasswordToggle(
                         isObscured: _obscurePassword,
-                        onToggle: () => setState(
-                            () => _obscurePassword = !_obscurePassword),
+                        onToggle: _togglePasswordVisibility,
                       ),
                       validator: UserRepository.validatePassword,
                     ),
@@ -204,8 +211,7 @@ class _SignupScreenState extends State<SignupScreen>
                       obscureText: _obscureConfirm,
                       suffixIcon: _PasswordToggle(
                         isObscured: _obscureConfirm,
-                        onToggle: () =>
-                            setState(() => _obscureConfirm = !_obscureConfirm),
+                        onToggle: _toggleConfirmVisibility,
                       ),
                       validator: (val) =>
                           UserRepository.validateConfirmPassword(

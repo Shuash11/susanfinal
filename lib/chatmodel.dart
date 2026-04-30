@@ -76,40 +76,89 @@ class ChatViewModel extends ChangeNotifier {
   bool get hasMessages => _activeSession?.hasMessages ?? false;
 
   static const int chatExpiryDays = 2;
+  static const int sessionPageSize = 10;
+
+  bool _hasMoreSessions = true;
+  bool get hasMoreSessions => _hasMoreSessions;
+
+  String? _loadMoreError;
+  String? get loadMoreError => _loadMoreError;
+
+  bool _isAuthenticated = true;
+  bool get isAuthenticated => _isAuthenticated;
 
   Future<void> initialize() async {
     _isLoadingSessions = true;
     notifyListeners();
 
-    // Wait for auth to be ready
     try {
       if (FirebaseAuth.instance.currentUser == null) {
-        await FirebaseAuth.instance.authStateChanges().first
+        final user = await FirebaseAuth.instance.authStateChanges().first
             .timeout(const Duration(seconds: 5));
+        if (user == null) {
+          _isAuthenticated = false;
+        }
       }
     } catch (_) {
-      // Timeout or error - proceed anyway
+      _isAuthenticated = false;
+    }
+
+    if (!_isAuthenticated) {
+      _isLoadingSessions = false;
+      notifyListeners();
+      return;
     }
 
     _isGeminiConnected = await _chatService.isOllamaRunning();
 
-    final savedSessions = await _chatRepository.loadSessions();
+    final savedSessions = await _chatRepository.loadSessions(limit: sessionPageSize);
 
-    // Delete sessions older than 2 days
     final now = DateTime.now();
-    final expiredSessions = <ChatSession>[];
-    for (final session in savedSessions) {
-      final age = now.difference(session.createdAt).inDays;
-      if (age >= chatExpiryDays) {
-        expiredSessions.add(session);
-        _chatRepository.deleteSession(session.id);
-      }
+    final expiredSessions = savedSessions.where((s) =>
+        now.difference(s.createdAt).inDays >= chatExpiryDays).toList();
+    
+    for (final session in expiredSessions) {
+      _chatRepository.deleteSession(session.id);
     }
 
-    // Keep only non-expired sessions
-    _sessions.addAll(savedSessions.where((s) => !expiredSessions.contains(s)));
+    _sessions.addAll(savedSessions.where((s) =>
+        !expiredSessions.contains(s)));
 
+    _hasMoreSessions = savedSessions.length >= sessionPageSize;
     _isLoadingSessions = false;
+    notifyListeners();
+  }
+
+  bool _isLoadingMore = false;
+  bool get isLoadingMore => _isLoadingMore;
+  int _loadedCount = 0;
+
+  Future<void> loadMoreSessions() async {
+    if (_isLoadingMore || !_hasMoreSessions) return;
+
+    _isLoadingMore = true;
+    notifyListeners();
+
+    try {
+      _loadedCount = _sessions.length;
+      final moreSessions = await _chatRepository.loadSessions(
+        limit: sessionPageSize,
+        offset: _loadedCount,
+      );
+      _loadMoreError = null;
+
+      if (moreSessions.isEmpty) {
+        _hasMoreSessions = false;
+      } else {
+        _sessions.addAll(moreSessions);
+        _hasMoreSessions = moreSessions.length >= sessionPageSize;
+      }
+    } catch (e) {
+      _hasMoreSessions = false;
+      _loadMoreError = 'Failed to load more chats';
+    }
+
+    _isLoadingMore = false;
     notifyListeners();
   }
 
@@ -145,7 +194,11 @@ class ChatViewModel extends ChangeNotifier {
   }
 
   void openSession(String id) {
-    _activeSession = _sessions.firstWhere((s) => s.id == id);
+    try {
+      _activeSession = _sessions.firstWhere((s) => s.id == id);
+    } catch (_) {
+      _activeSession = null;
+    }
     notifyListeners();
   }
 
@@ -157,7 +210,7 @@ class ChatViewModel extends ChangeNotifier {
   void deleteSession(String id) {
     _sessions.removeWhere((s) => s.id == id);
     if (_activeSession?.id == id) _activeSession = null;
-    _chatService.clearHistory(sessionId: id);
+    _chatService.clearHistory(id);
     _chatRepository.deleteSession(id);
     notifyListeners();
   }
@@ -195,11 +248,9 @@ class ChatViewModel extends ChangeNotifier {
           sessionId: session.id, sessionMessages: session.messages, preferredProvider: _selectedProvider)) {
         streamBuffer.write(chunk);
 
-        // Look up the bubble fresh on every chunk using the stable loadingId
         final liveIndex = session.messages.indexWhere((m) => m.id == loadingId);
 
         if (liveIndex != -1) {
-          // Show streaming text — still marked isLoading: true so dots → text transition works
           session.messages[liveIndex] = MessageModel(
             id: loadingId,
             content: streamBuffer.toString(),
@@ -211,17 +262,14 @@ class ChatViewModel extends ChangeNotifier {
         }
       }
 
-      // ── Stream finished — finalize the bubble ──────────────
       session.isLoading = false;
 
       final finalIndex = session.messages.indexWhere((m) => m.id == loadingId);
 
       if (finalIndex != -1) {
         if (streamBuffer.isEmpty) {
-          // Bot returned nothing — silently remove the bubble
           session.messages.removeAt(finalIndex);
         } else {
-          // Stamp final message with isLoading: FALSE — this stops the dots
           session.messages[finalIndex] = MessageModel(
             id: loadingId,
             content: streamBuffer.toString(),
@@ -265,7 +313,7 @@ class ChatViewModel extends ChangeNotifier {
     if (_activeSession == null) return;
     _activeSession!.messages.clear();
     _activeSession!.errorMessage = null;
-    _chatService.clearHistory(sessionId: _activeSession!.id);
+    _chatService.clearHistory(_activeSession!.id);
     notifyListeners();
   }
 

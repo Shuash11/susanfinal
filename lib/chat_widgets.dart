@@ -528,7 +528,8 @@ class InputBar extends StatelessWidget {
           GestureDetector(
             onTap: isLoading ? null : () => _showProviderSelector(context),
             child: Container(
-              padding: const EdgeInsets.all(10),
+              width: 100,
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
               decoration: BoxDecoration(
                 color: kCard,
                 borderRadius: BorderRadius.circular(12),
@@ -536,6 +537,7 @@ class InputBar extends StatelessWidget {
               ),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
                   Icon(
                     _getProviderIcon(selectedProvider),
@@ -543,15 +545,18 @@ class InputBar extends StatelessWidget {
                     size: 18,
                   ),
                   const SizedBox(width: 6),
-                  Text(
-                    _getProviderName(selectedProvider),
-                    style: const TextStyle(
-                      color: kTextPri,
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
+                  Expanded(
+                    child: Text(
+                      _getProviderName(selectedProvider),
+                      style: const TextStyle(
+                        color: kTextPri,
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                      ),
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
-                  const SizedBox(width: 4),
+                  const SizedBox(width: 2),
                   const Icon(
                     Icons.arrow_drop_down_rounded,
                     color: kTextSec,

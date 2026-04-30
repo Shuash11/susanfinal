@@ -63,7 +63,7 @@ class _MessageList extends StatelessWidget {
   Widget build(BuildContext context) {
     final messages = vm.messages;
     return ListView.builder(
-      key: PageStorageKey('chat_list_${messages.length}'),
+      key: const PageStorageKey('chat_list'),
       controller: scrollController,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 20),
       itemCount: messages.length,

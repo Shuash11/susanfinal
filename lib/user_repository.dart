@@ -169,21 +169,5 @@ Future<AuthResult> login(String username, String password) async {
     return null;
   }
 
-  String _mapFirebaseError(String code) {
-    switch (code) {
-      case 'user-not-found':
-      case 'wrong-password':
-        return 'Invalid username or password. Please try again.';
-      case 'email-already-in-use':
-        return 'That username is already taken. Try another one.';
-      case 'weak-password':
-        return 'Password must be at least 6 characters.';
-      case 'too-many-requests':
-        return 'Too many attempts. Please try again later.';
-      case 'network-request-failed':
-        return 'No internet connection. Please check your network.';
-      default:
-        return 'Something went wrong. Please try again.';
-    }
-  }
+  
 }

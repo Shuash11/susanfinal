@@ -42,6 +42,44 @@ class DashboardView extends StatelessWidget {
       );
     }
 
+    if (!vm.isAuthenticated) {
+      return Center(
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: kAccent.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(color: kAccent.withValues(alpha: 0.3)),
+                ),
+                child: const Icon(Icons.lock_outline, color: kAccent, size: 36),
+              ),
+              const SizedBox(height: 20),
+              const Text(
+                'Please log in again',
+                style: TextStyle(
+                  color: kTextPri,
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              const SizedBox(height: 8),
+              const Text(
+                'Your session has expired.\nPlease sign in to continue.',
+                textAlign: TextAlign.center,
+                style: TextStyle(color: kTextSec, fontSize: 13),
+              ),
+            ],
+          ),
+        ),
+      );
+    }
+
     return SingleChildScrollView(
       padding: const EdgeInsets.all(20),
       child: Column(
@@ -54,6 +92,10 @@ class DashboardView extends StatelessWidget {
                   sessions: vm.sessions,
                   onSelect: onSelectSession,
                   onDelete: onDeleteSession,
+                  onLoadMore: vm.loadMoreSessions,
+                  isLoadingMore: vm.isLoadingMore,
+                  hasMore: vm.hasMoreSessions,
+                  errorMessage: vm.loadMoreError,
                 )
               : const _NoChatsHint(),
         ],
@@ -147,11 +189,19 @@ class _RecentChatsSection extends StatelessWidget {
   final List<ChatSession> sessions;
   final void Function(ChatSession) onSelect;
   final void Function(ChatSession) onDelete;
+  final VoidCallback onLoadMore;
+  final bool isLoadingMore;
+  final bool hasMore;
+  final String? errorMessage;
 
   const _RecentChatsSection({
     required this.sessions,
     required this.onSelect,
     required this.onDelete,
+    required this.onLoadMore,
+    required this.isLoadingMore,
+    required this.hasMore,
+    this.errorMessage,
   });
 
   @override
@@ -185,13 +235,51 @@ class _RecentChatsSection extends StatelessWidget {
               onTap: () => onSelect(s),
               onDelete: () => onDelete(s),
             )),
+        if (hasMore) ...[
+          const SizedBox(height: 12),
+          SizedBox(
+            width: double.infinity,
+            child: TextButton(
+              onPressed: isLoadingMore ? null : onLoadMore,
+              child: isLoadingMore
+                  ? const SizedBox(
+                      width: 20,
+                      height: 20,
+                      child: CircularProgressIndicator(strokeWidth: 2, color: kAccent),
+                    )
+                  : const Text('Load More', style: TextStyle(color: kAccent)),
+            ),
+          ),
+        ],
+        if (errorMessage != null) ...[
+          const SizedBox(height: 8),
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.redAccent.withValues(alpha: 0.1),
+              borderRadius: BorderRadius.circular(8),
+              border: Border.all(color: Colors.redAccent.withValues(alpha: 0.3)),
+            ),
+            child: Row(
+              children: [
+                const Icon(Icons.error_outline, color: Colors.redAccent, size: 18),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    errorMessage!,
+                    style: const TextStyle(color: Colors.redAccent, fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
       ],
     );
   }
 }
 
 // ── SessionCard ───────────────────────────────────────────────
-// Public so HomeScreen can also use it if needed.
 class SessionCard extends StatelessWidget {
   final ChatSession session;
   final VoidCallback onTap;
@@ -307,7 +395,7 @@ class SessionCard extends StatelessWidget {
   }
 }
 
-// ── _NoChatsHint ──────────────────────────────────────────────
+// ── _NoChatsHint ─────────────────────────────────���─���──────────
 class _NoChatsHint extends StatelessWidget {
   const _NoChatsHint();
 

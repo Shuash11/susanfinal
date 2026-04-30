@@ -40,8 +40,11 @@ dependencies:
   firebase_auth: ^5.5.0
   cloud_firestore: ^5.5.0
 
-  # HTTP for backend API calls
+  # HTTP for API calls
   http: ^1.2.0
+
+  # Environment variables (to hide API key)
+  flutter_dotenv: ^5.1.0
 
   # Connectivity
   connectivity_plus: ^6.0.0
@@ -81,6 +84,7 @@ flutter:
   uses-material-design: true
 
   assets:
+    - .env
     - assets/icon/
 
   # To add assets to your application, add an assets section, like this:

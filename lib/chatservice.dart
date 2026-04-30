@@ -3,7 +3,6 @@ import 'dart:async';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'config/api_config.dart';
-import 'config/backend_config.dart';
 import 'message_model.dart';
 
 enum ChatProvider { studyBuddyThinker, studyBuddyFast, studyBuddyJuniorCoder, studyBuddyGeneralTask }
@@ -11,11 +10,16 @@ enum ChatProvider { studyBuddyThinker, studyBuddyFast, studyBuddyJuniorCoder, st
 class ChatService {
   final Map<String, List<Map<String, dynamic>>> _histories = {};
   final Map<String, List<Map<String, dynamic>>> _groqHistories = {};
+  final http.Client _client = http.Client();
 
   bool _isCancelled = false;
 
   void cancelCurrentRequest() {
     _isCancelled = true;
+  }
+
+  void dispose() {
+    _client.close();
   }
 
   Stream<String> sendMessageStream(
@@ -89,10 +93,19 @@ class ChatService {
 
     history.add({'role': 'user', 'parts': [{'text': userMessage}]});
 
-    // Use backend instead of direct API call
-    final url = Uri.parse(BackendConfig.geminiEndpoint);
+    final apiKey = ApiConfig.geminiApiKey;
+    final baseUrl = ApiConfig.geminiBaseUrl;
 
-    final client = http.Client();
+    if (apiKey.isEmpty) {
+      throw Exception('Gemini API key is empty. Check .env or build config.');
+    }
+
+    final url = Uri.parse(
+      '${baseUrl.replaceAll('generateContent', 'streamGenerateContent')}?key=$apiKey',
+    );
+
+    // Use shared client for connection pooling
+    // final client = http.Client(); - now uses instance
     final StringBuffer fullReply = StringBuffer();
 
     try {
@@ -103,7 +116,7 @@ class ChatService {
           'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1024},
         });
 
-      final streamedResponse = await client.send(request).timeout(const Duration(seconds: 30));
+      final streamedResponse = await _client.send(request).timeout(const Duration(seconds: 30));
 
       if (streamedResponse.statusCode != 200) {
         final errorBody = await streamedResponse.stream.bytesToString();
@@ -129,34 +142,25 @@ class ChatService {
           }
           if (!line.startsWith('data: ')) continue;
           final jsonStr = line.substring(6).trim();
-          if (jsonStr.isEmpty || jsonStr == '[DONE]') continue;
+          if (jsonStr.isEmpty) continue;
 
           try {
             final data = jsonDecode(jsonStr) as Map<String, dynamic>;
-
-            final error = data['error'];
-            if (error != null) {
-              final errorMsg = error['message'] ?? error.toString();
-              throw Exception('Gemini error: $errorMsg');
+            final candidate = data['candidates']?[0];
+            final content = candidate?['content'] as Map<String, dynamic>?;
+            final parts = content?['parts'] as List?;
+            if (parts != null && parts.isNotEmpty) {
+              final text = parts[0]['text'] as String?;
+              if (text != null && text.isNotEmpty) {
+                fullReply.write(text);
+                yield text;
+              }
             }
-
-            final text = data['candidates']?[0]?['content']?['parts']?[0]?['text'] as String?;
-            if (text != null && text.isNotEmpty) {
-              fullReply.write(text);
-              yield text;
-            }
-          } catch (e) {
-            if (e.toString().contains('Gemini error')) rethrow;
-          }
+          } catch (_) {}
         }
       }
 
-      if (fullReply.isEmpty) {
-        history.removeLast();
-        throw Exception('Gemini returned empty response.');
-      }
-
-      if (!_isCancelled) {
+      if (fullReply.isNotEmpty && !_isCancelled) {
         history.add({'role': 'model', 'parts': [{'text': fullReply.toString()}]});
       } else {
         history.removeLast();
@@ -167,7 +171,8 @@ class ChatService {
       }
       if (!_isCancelled) rethrow;
     } finally {
-      client.close();
+      // Keep client open for connection reuse
+      // client.close();
     }
   }
 
@@ -184,14 +189,15 @@ class ChatService {
 
     history.add({'role': 'user', 'content': userMessage});
 
-    // Use backend instead of direct API call
-    final url = Uri.parse(BackendConfig.groqEndpoint);
-    final client = http.Client();
+    final url = Uri.parse('${ApiConfig.groqBaseUrl}/chat/completions');
+    // Use shared client for connection pooling
+    // final client = http.Client();
     final StringBuffer fullReply = StringBuffer();
 
     try {
       final headers = {
         'Content-Type': 'application/json',
+        'Authorization': 'Bearer ${ApiConfig.groqApiKey}',
       };
 
       final body = jsonEncode({
@@ -202,7 +208,7 @@ class ChatService {
         'stream': true,
       });
 
-      final streamedResponse = await client.send(
+      final streamedResponse = await _client.send(
         http.Request('POST', url)
           ..headers.addAll(headers)
           ..body = body,
@@ -256,27 +262,42 @@ class ChatService {
       }
       if (!_isCancelled) rethrow;
     } finally {
-      client.close();
+      // Keep client open for connection reuse
+      // client.close();
     }
   }
 
-  void clearHistory({required String sessionId}) {
+  void clearHistory(String sessionId) {
     _histories.remove(sessionId);
     _groqHistories.remove(sessionId);
   }
 
-  void clearAllHistory() {
+  void clearAllHistories() {
     _histories.clear();
     _groqHistories.clear();
   }
 
   Future<bool> isOllamaRunning() async {
-    // Check backend health instead of direct API
-    try {
-      final url = Uri.parse(BackendConfig.healthEndpoint);
-      final response = await http.get(url).timeout(const Duration(seconds: 5));
-      if (response.statusCode == 200) return true;
-    } catch (_) {}
+    if (ApiConfig.hasGeminiKey) {
+      try {
+        final baseUrl = ApiConfig.geminiBaseUrl.split(':generateContent').first;
+        final url = Uri.parse('$baseUrl?key=${ApiConfig.geminiApiKey}');
+        final response = await http.get(url).timeout(const Duration(seconds: 5));
+        if (response.statusCode == 200) return true;
+      } catch (_) {}
+    }
+
+    if (ApiConfig.hasGroqKey) {
+      try {
+        final url = Uri.parse('${ApiConfig.groqBaseUrl}/models');
+        final response = await http.get(
+          url,
+          headers: {'Authorization': 'Bearer ${ApiConfig.groqApiKey}'},
+        ).timeout(const Duration(seconds: 5));
+        if (response.statusCode == 200) return true;
+      } catch (_) {}
+    }
+
     return false;
   }
 }
